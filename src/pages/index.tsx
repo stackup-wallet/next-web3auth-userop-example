@@ -17,9 +17,6 @@ const pmContext = {
 };
 export default function Home() {
   const [web3auth, setWeb3auth] = useState<Web3Auth | null>(null);
-  const [provider, setProvider] = useState<SafeEventEmitterProvider | null>(
-    null
-  );
   const [account, setAccount] = useState<Presets.Builder.SimpleAccount | null>(
     null
   );
@@ -59,34 +56,18 @@ export default function Home() {
         const chainId = network.chainId;
         const web3auth = new Web3Auth({
           clientId: web3AuthClientId,
-          web3AuthNetwork: "testnet", // mainnet, aqua, celeste, cyan or testnet
+          web3AuthNetwork: "testnet",
           chainConfig: {
             chainNamespace: CHAIN_NAMESPACES.EIP155,
             chainId: toQuantity(chainId),
-            rpcTarget: process.env.NEXT_PUBLIC_RPC_URL, // This is the public RPC we have added, please pass on your own endpoint while creating an app
+            rpcTarget: process.env.NEXT_PUBLIC_RPC_URL,
           },
         });
 
-        setWeb3auth(web3auth);
-
         await web3auth.initModal();
 
-        if (web3auth.provider) {
-          setProvider(web3auth.provider);
-          const authenticateUser = await web3auth.authenticateUser();
-          setIdToken(authenticateUser.idToken);
-          const privateKey = (await web3auth.provider.request({
-            method: "private_key",
-          })) as string;
-          const acc = await Presets.Builder.SimpleAccount.init(
-            new Wallet(privateKey),
-            rpcUrl,
-            entryPoint,
-            simpleAccountFactory,
-            paymaster
-          );
-          setAccount(acc);
-        }
+        setWeb3auth(web3auth);
+        setAuthorized(web3auth);
       } catch (error) {
         console.error(error);
       } finally {
@@ -97,6 +78,35 @@ export default function Home() {
     init();
   }, []);
 
+  const createAccount = async (privateKey: string) => {
+    return await Presets.Builder.SimpleAccount.init(
+      new Wallet(privateKey) as any,
+      rpcUrl,
+      entryPoint,
+      simpleAccountFactory,
+      paymaster
+    );
+  };
+
+  const getPrivateKey = async (provider: SafeEventEmitterProvider) => {
+    return (await provider.request({
+      method: "private_key",
+    })) as string;
+  };
+
+  const setAuthorized = async (w3auth: Web3Auth) => {
+    if (!w3auth.provider) {
+      throw new Error("web3authprovider not initialized yet");
+    }
+    const authenticateUser = await w3auth.authenticateUser();
+
+    const privateKey = await getPrivateKey(w3auth.provider);
+    const acc = await createAccount(privateKey);
+    setIdToken(authenticateUser.idToken);
+    setAccount(acc);
+    setPrivateKey(privateKey);
+  };
+
   const login = async () => {
     if (!web3auth) {
       throw new Error("web3auth not initialized yet");
@@ -105,33 +115,18 @@ export default function Home() {
     if (!web3authProvider) {
       throw new Error("web3authprovider not initialized yet");
     }
-    setProvider(web3authProvider);
-    const authenticateUser = await web3auth.authenticateUser();
-    setIdToken(authenticateUser.idToken);
-    const privateKey = (await web3authProvider.request({
-      method: "private_key",
-    })) as string;
-    setPrivateKey(privateKey);
-    const acc = await Presets.Builder.SimpleAccount.init(
-      new Wallet(privateKey),
-      rpcUrl,
-      entryPoint,
-      simpleAccountFactory,
-      paymaster
-    );
-    setAccount(acc);
-    setProvider(web3authProvider);
+
+    setAuthorized(web3auth);
   };
 
   const logout = async () => {
     if (!web3auth) {
-      console.log("web3auth not initialized yet");
-      return;
+      throw new Error("web3auth not initialized yet");
     }
     await web3auth.logout();
     setAccount(null);
     setIdToken(null);
-    setProvider(null);
+    setPrivateKey(null);
   };
 
   const addEvent = (newEvent: string) => {
@@ -166,7 +161,7 @@ export default function Home() {
   };
 
   if (loading) {
-    return;
+    return <p>loading...</p>;
   }
   return (
     <main
