@@ -10,14 +10,9 @@ import {
 import { useEffect, useState } from "react";
 import { Client, Presets } from "userop";
 
-const entryPoint = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789";
-const simpleAccountFactory = "0x9406Cc6185a346906296840746125a0E44976454";
-const pmContext = {
-  type: "payg",
-};
 export default function Home() {
   const [web3auth, setWeb3auth] = useState<Web3Auth | null>(null);
-  const [account, setAccount] = useState<Presets.Builder.SimpleAccount | null>(
+  const [account, setAccount] = useState<Presets.Builder.Kernel | null>(
     null
   );
 
@@ -44,9 +39,16 @@ export default function Home() {
     throw new Error("PAYMASTER_RPC_URL is undefined");
   }
 
-  const paymaster = true
-    ? Presets.Middleware.verifyingPaymaster(pmUrl, pmContext)
-    : undefined;
+  const pmContext = {
+    type: "payg",
+  };
+
+  const paymasterMiddleware = true 
+  ? Presets.Middleware.verifyingPaymaster(
+    pmUrl,
+    pmContext
+  )
+: undefined;
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -67,7 +69,6 @@ export default function Home() {
         await web3auth.initModal();
 
         setWeb3auth(web3auth);
-        setAuthorized(web3auth);
       } catch (error) {
         console.error(error);
       } finally {
@@ -79,12 +80,10 @@ export default function Home() {
   }, []);
 
   const createAccount = async (privateKey: string) => {
-    return await Presets.Builder.SimpleAccount.init(
+    return await Presets.Builder.Kernel.init(
       new Wallet(privateKey) as any,
       rpcUrl,
-      entryPoint,
-      simpleAccountFactory,
-      paymaster
+      { paymasterMiddleware }
     );
   };
 
@@ -140,12 +139,18 @@ export default function Home() {
     }
     addEvent("Sending transaction...");
 
-    const client = await Client.init(rpcUrl, entryPoint);
+    const client = await Client.init(rpcUrl);
 
     const target = getAddress(recipient);
     const value = parseEther(amount);
+
+    const op = {
+      to: target,
+      value: value,
+      data: "0x"
+    };
     const res = await client.sendUserOperation(
-      account.execute(target, value, "0x"),
+      account.execute(op),
       {
         onBuild: async (op) => {
           addEvent(`Signed UserOperation: `);
