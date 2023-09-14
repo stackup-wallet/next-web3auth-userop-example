@@ -99,6 +99,7 @@ export default function Home() {
       throw new Error("web3authprovider not initialized yet");
     }
     const authenticateUser = await w3auth.authenticateUser();
+    console.log("authenticateUser", authenticateUser)
 
     const privateKey = await getPrivateKey(w3auth.provider);
     const acc = await createAccount(privateKey);
