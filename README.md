@@ -8,6 +8,8 @@ Clone this repository to your local machine.
 
 ### Prerequisites
 
+- Browser without wallet extension.
+
 - Node.js installed on your system.
 
 - An account with Web3Auth ([https://web3auth.io/](https://web3auth.io/)) to get a client ID token.
@@ -36,7 +38,7 @@ STACKUP_RPC_URL=Your_Stackup_RPC_URL`
 Install all dependencies by running the following command:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Run the Application
@@ -44,7 +46,7 @@ npm install
 You can start the application with the following command:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The application should now be running at [http://localhost:3000](http://localhost:3000/).
